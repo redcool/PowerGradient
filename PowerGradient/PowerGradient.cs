@@ -12,7 +12,7 @@ public class PowerGradient
     public bool randomizeColour;
 
     [SerializeField]
-    List<ColourKey> keys = new List<ColourKey>();
+    List<ColorKey> keys = new List<ColorKey>();
 
     public PowerGradient()
     {
@@ -52,7 +52,7 @@ public class PowerGradient
         for (int i = 0; i < g.NumKeys; i++)
         {
             var k = g.GetKey(i);
-            AddKey(k.Colour, k.Time);
+            AddKey(k.Color, k.Time);
         }
     }
 
@@ -79,12 +79,12 @@ public class PowerGradient
         if (keys.Count < 2)
             return Color.white;
 
-        ColourKey keyLeft = keys[0];
-        ColourKey keyRight = keys[keys.Count - 1];
+        ColorKey keyLeft = keys[0];
+        ColorKey keyRight = keys[keys.Count - 1];
 
         for (int i = 0; i < keys.Count; i++)
         {
-            if (keys[i].Time < time)
+            if (keys[i].Time <= time)
             {
                 keyLeft = keys[i];
             }
@@ -98,14 +98,14 @@ public class PowerGradient
         if (blendMode == BlendMode.Linear)
         {
             float blendTime = Mathf.InverseLerp(keyLeft.Time, keyRight.Time, time);
-            return Color.Lerp(keyLeft.Colour, keyRight.Colour, blendTime);
+            return Color.Lerp(keyLeft.Color, keyRight.Color, blendTime);
         }
-        return keyRight.Colour;
+        return keyRight.Color;
     }
 
-    public int AddKey(Color colour, float time)
+    public int AddKey(Color color, float time)
     {
-        ColourKey newKey = new ColourKey(colour, time);
+        ColorKey newKey = new ColorKey(color, time);
         for (int i = 0; i < keys.Count; i++)
         {
             if (newKey.Time < keys[i].Time)
@@ -119,6 +119,13 @@ public class PowerGradient
         return keys.Count - 1;
     }
 
+    public int SortKeys(int index)
+    {
+        var key = keys[index];
+        keys = keys.OrderBy(k => k.Time).ToList();
+        return keys.IndexOf(key);
+    }
+
     public int AddKey(float time, Color c)
     {
         return AddKey(c, time);
@@ -126,23 +133,23 @@ public class PowerGradient
 
     public void RemoveKey(int index)
     {
-        if (keys.Count >= 2)
+        if (keys.Count > 1)
         {
             keys.RemoveAt(index);
         }
     }
 
-    public int UpdateKeyTime(int index, float time)
-    {
-        Color col = keys[index].Colour;
-        RemoveKey(index);
-        return AddKey(col, time);
-    }
+    //public int UpdateKeyTime(int index, float time)
+    //{
+    //    Color col = keys[index].Color;
+    //    RemoveKey(index);
+    //    return AddKey(col, time);
+    //}
 
-    public void UpdateKeyColour(int index, Color col)
-    {
-        keys[index] = new ColourKey(col, keys[index].Time);
-    }
+    //public void UpdateKeyColor(int index, Color col)
+    //{
+    //    keys[index] = new ColorKey(col, keys[index].Time);
+    //}
 
     public int NumKeys
     {
@@ -152,7 +159,7 @@ public class PowerGradient
         }
     }
 
-    public ColourKey GetKey(int i)
+    public ColorKey GetKey(int i)
     {
         return keys[i];
     }
@@ -160,36 +167,36 @@ public class PowerGradient
     public Texture2D GetTexture(int width)
     {
         Texture2D texture = new Texture2D(width, 1);
-        Color[] colours = new Color[width];
+        Color[] colors = new Color[width];
         for (int i = 0; i < width; i++)
         {
-            colours[i] = Evaluate((float)i / (width - 1));
+            colors[i] = Evaluate((float)i / (width-1));
         }
-        texture.SetPixels(colours);
+        texture.SetPixels(colors);
         texture.Apply();
         return texture;
     }
 
     [System.Serializable]
-    public struct ColourKey
+    public struct ColorKey
     {
         [SerializeField]
-        [ColorUsage(true, true)]
-        Color colour;
+        [ColorUsage(true, false)]
+        Color color;
         [SerializeField]
         float time;
 
-        public ColourKey(Color colour, float time)
+        public ColorKey(Color color, float time)
         {
-            this.colour = colour;
+            this.color = color;
             this.time = time;
         }
 
-        public Color Colour
+        public Color Color
         {
             get
             {
-                return colour;
+                return color;
             }
         }
 

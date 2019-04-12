@@ -15,17 +15,24 @@ public class PowerGradientWindow : EditorWindow
     Rect gradientPreviewRect;
     Rect[] keyRects;
     bool mouseIsDownOverKey;
+    bool needsRepaint;
+
     int selectedKeyIndex;
 
     Rect keyInteractiveRect;
 
     private void OnGUI()
     {
-
+        property.serializedObject.Update();
         Draw();
+        HandleInput();
+        property.serializedObject.ApplyModifiedProperties();
 
-        if (HandleInput())
+        if (needsRepaint)
         {
+            needsRepaint = false;
+
+            selectedKeyIndex = gradient.SortKeys(selectedKeyIndex);
             Repaint();
         }
     }
@@ -38,112 +45,140 @@ public class PowerGradientWindow : EditorWindow
         keyInteractiveRect = new Rect(borderSize,gradientPreviewRect.yMax + borderSize,gradientPreviewRect.width, borderSize + keyHeight);
 
         GUI.DrawTexture(gradientPreviewRect, gradient.GetTexture((int)gradientPreviewRect.width));
-        var keyRectHeight = DrawInteractiveKeys();
+        var keyRectHeight = DrawKeys();
 
         Rect settingsRect = new Rect(borderSize, keyRectHeight + borderSize, position.width - borderSize * 2, position.height + 100);
         DrawSettings(settingsRect);
+    }
+    float DrawKeys()
+    {
+        keyRects = new Rect[gradient.NumKeys];
+        for (int i = 0; i < gradient.NumKeys; i++)
+        {
+            var key = gradient.GetKey(i);
+            var keyRect = new Rect(gradientPreviewRect.x + gradientPreviewRect.width * key.Time - keyWidth / 2f, gradientPreviewRect.yMax + borderSize, keyWidth, keyHeight);
+
+            if (i == selectedKeyIndex)
+            {
+                var c = Color.white == key.Color ? Color.black : Color.white;
+                EditorGUI.DrawRect(new Rect(keyRect.x - 2, keyRect.y - 2, keyRect.width + 4, keyRect.height + 4), c);
+            }
+            //vertical line
+            DrawVerticalLine(key.Color, ref keyRect);
+
+            EditorGUI.DrawRect(keyRect, key.Color);
+            keyRects[i] = keyRect;
+        }
+        return keyRects[0].yMax;
+    }
+    
+    private void DrawVerticalLine(Color keyColor, ref Rect keyRect)
+    {
+        var lineSize = new Vector2(1, -keyRect.height);
+        var linePos = new Vector2(keyRect.center.x- lineSize.x *0.5f, keyRect.position.y);
+        EditorGUI.DrawRect(new Rect(linePos, lineSize), keyColor);
     }
 
     private void DrawSettings(Rect settingsRect)
     {
         GUILayout.BeginArea(settingsRect);
         {
-            DrawColorAndProgress();
+            DrawSelectedKey();
+            //gradient.blendMode = (PowerGradient.BlendMode)EditorGUILayout.EnumPopup("Blend mode", gradient.blendMode);
+            //gradient.randomizeColour = EditorGUILayout.Toggle("Randomize colour", gradient.randomizeColour);
+            //gradient.range = EditorGUILayout.Vector2Field("Range", gradient.range);
 
-            gradient.blendMode = (PowerGradient.BlendMode)EditorGUILayout.EnumPopup("Blend mode", gradient.blendMode);
-            gradient.randomizeColour = EditorGUILayout.Toggle("Randomize colour", gradient.randomizeColour);
-            gradient.range = EditorGUILayout.Vector2Field("Range", gradient.range);
+            EditorGUILayout.PropertyField(property.FindPropertyRelative("blendMode"));
+            EditorGUILayout.PropertyField(property.FindPropertyRelative("randomizeColour"));
+            EditorGUILayout.PropertyField(property.FindPropertyRelative("range"));
+
         }
         GUILayout.EndArea();
     }
 
-    private void DrawColorAndProgress()
+    private void DrawSelectedKey()
     {
+        if (selectedKeyIndex >= gradient.NumKeys)
+            return;
+
         GUILayout.BeginHorizontal("box");
         {
-            EditorGUI.BeginChangeCheck();
-            var key = gradient.GetKey(selectedKeyIndex);
+            var key = GetKeyProp(selectedKeyIndex);
 
-            Color newColour = EditorGUILayout.ColorField("Color", key.Colour);
-            //progress
-            var time = key.Time;
-            time = EditorGUILayout.FloatField("Location", time * gradient.range.y, GUILayout.Width(200));
-            time = Mathf.Clamp(time, gradient.range.x, gradient.range.y);
-            if (EditorGUI.EndChangeCheck())
-            {
-                gradient.UpdateKeyColour(selectedKeyIndex, newColour);
-                selectedKeyIndex = gradient.UpdateKeyTime(selectedKeyIndex, time / gradient.range.y);
-            }
+            //key color
+            EditorGUILayout.PropertyField(key.FindPropertyRelative("color"));
+
+            //key time 
+            DrawKeyTime(key.FindPropertyRelative("time"));
+
         }
         GUILayout.EndHorizontal();
     }
 
-    float DrawInteractiveKeys()
+    private void DrawKeyTime(SerializedProperty keyTime)
     {
-        keyRects = new Rect[gradient.NumKeys];
-        for (int i = 0; i < gradient.NumKeys; i++)
+        //EditorGUILayout.PropertyField(keyTime);
+        EditorGUI.BeginChangeCheck();
+
+        var time = keyTime.floatValue;
+        time = EditorGUILayout.FloatField("Location", time * gradient.range.y, GUILayout.Width(200));
+        time = Mathf.Clamp(time, gradient.range.x, gradient.range.y);
+        time /= gradient.range.y;
+        keyTime.floatValue = time;
+
+        if (EditorGUI.EndChangeCheck())
         {
-            PowerGradient.ColourKey key = gradient.GetKey(i);
-            Rect keyRect = new Rect(gradientPreviewRect.x + gradientPreviewRect.width * key.Time - keyWidth / 2f, gradientPreviewRect.yMax + borderSize, keyWidth, keyHeight);
-            if (i == selectedKeyIndex)
-            {
-                EditorGUI.DrawRect(new Rect(keyRect.x - 2, keyRect.y - 2, keyRect.width + 4, keyRect.height + 4), Color.black);
-            }
-            //vertical line
-            DrawVerticalLine(ref key, ref keyRect);
-
-            EditorGUI.DrawRect(keyRect, key.Colour);
-            keyRects[i] = keyRect;
+            needsRepaint = true;
         }
-        return keyRects[0].yMax;
     }
 
-    private void DrawVerticalLine(ref PowerGradient.ColourKey key, ref Rect keyRect)
+
+    SerializedProperty GetKeyProp(int id)
     {
-        var lineSize = new Vector3(1, -keyRect.height);
-        var linePos = new Vector2(keyRect.center.x, keyRect.position.y);
-        EditorGUI.DrawRect(new Rect(linePos, lineSize), key.Colour);
+        return property.FindPropertyRelative("keys").GetArrayElementAtIndex(id);
     }
 
-    void ProgressBar(float value,string text)
-    {
-        var r = EditorGUILayout.BeginVertical(GUILayout.Width(100));
-        EditorGUI.ProgressBar(r,value,text);
-        GUILayout.Space(18);
-        EditorGUILayout.EndHorizontal();
-    }
 
-    bool HandleInput()
+    void HandleInput()
     {
         Event guiEvent = Event.current;
-        return HandleMouse(guiEvent) || HandleKeyboard(guiEvent);
+        HandleMouse(guiEvent);
+        HandleKeyboard(guiEvent);
     }
 
-    private bool HandleKeyboard(Event guiEvent)
+    private void HandleKeyboard(Event guiEvent)
     {
         if (guiEvent.keyCode == KeyCode.Delete && guiEvent.type == EventType.KeyDown)
         {
-            gradient.RemoveKey(selectedKeyIndex);
-            if (selectedKeyIndex >= gradient.NumKeys)
-            {
-                selectedKeyIndex--;
-            }
-            return true;
+            selectedKeyIndex = DeleteKey(selectedKeyIndex);
+            needsRepaint = true;
         }
-        return false;
     }
 
-    private bool HandleMouse(Event guiEvent)
+    int DeleteKey(int selectedKeyIndex)
     {
-        var needsRepaint = false;
+        gradient.RemoveKey(selectedKeyIndex);
+        if (selectedKeyIndex >= gradient.NumKeys)
+        {
+            selectedKeyIndex--;
+        }
+        return selectedKeyIndex;
+    }
+
+    private void HandleMouse(Event guiEvent)
+    {
         if (guiEvent.button != 0)
-            return false;
+            return;
 
         if (guiEvent.type == EventType.MouseDown)
         {
             for (int i = 0; i < keyRects.Length; i++)
             {
-                if (keyRects[i].Contains(guiEvent.mousePosition))
+                var rect = keyRects[i];
+                rect.position += new Vector2(-2,-2);
+                rect.size += new Vector2(4, 4);
+
+                if (rect.Contains(guiEvent.mousePosition))
                 {
                     selectedKeyIndex = i;
                     mouseIsDownOverKey = true;
@@ -154,7 +189,6 @@ public class PowerGradientWindow : EditorWindow
 
             if (keyInteractiveRect.Contains(guiEvent.mousePosition) && !mouseIsDownOverKey)
             {
-
                 float keyTime = Mathf.InverseLerp(gradientPreviewRect.x, gradientPreviewRect.xMax, guiEvent.mousePosition.x);
                 Color interpolatedColour = gradient.Evaluate(keyTime);
                 Color randomColour = new Color(Random.value, Random.value, Random.value);
@@ -167,16 +201,25 @@ public class PowerGradientWindow : EditorWindow
 
         if (guiEvent.type == EventType.MouseUp)
         {
+            if (mouseIsDownOverKey && gradientPreviewRect.Contains(guiEvent.mousePosition))
+            {
+                selectedKeyIndex = DeleteKey(selectedKeyIndex);
+                needsRepaint = true;
+            }
+
             mouseIsDownOverKey = false;
         }
 
         if (mouseIsDownOverKey && guiEvent.type == EventType.MouseDrag)
         {
             float keyTime = Mathf.InverseLerp(gradientPreviewRect.x, gradientPreviewRect.xMax, guiEvent.mousePosition.x);
-            selectedKeyIndex = gradient.UpdateKeyTime(selectedKeyIndex, keyTime);
+            //selectedKeyIndex = gradient.UpdateKeyTime(selectedKeyIndex, keyTime);
+
+            var key = GetKeyProp(selectedKeyIndex).FindPropertyRelative("time");
+            key.floatValue = keyTime;
+            
             needsRepaint = true;
         }
-        return needsRepaint;
     }
 
     public void SetGradient(PowerGradient gradient,SerializedProperty sp)
@@ -187,7 +230,7 @@ public class PowerGradientWindow : EditorWindow
 
     private void OnEnable()
     {
-        titleContent.text = "Gradient Editor";
+        titleContent.text = "Power Gradient Window";
         minSize = new Vector2(400, 200);
         maxSize = new Vector2(1920, 200);
         position.Set(position.x, position.y, minSize.x, minSize.y);
