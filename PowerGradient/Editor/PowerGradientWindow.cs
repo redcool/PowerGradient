@@ -105,8 +105,8 @@ public class PowerGradientWindow : EditorWindow
         {
             var key = GetKeyProp(selectedKeyIndex);
 
-            //key color
-            EditorGUILayout.PropertyField(key.FindPropertyRelative("color"));
+            //key colour
+            EditorGUILayout.PropertyField(key.FindPropertyRelative("colour"));
 
             //key time 
             DrawKeyTime(key.FindPropertyRelative("time"));

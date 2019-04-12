@@ -12,7 +12,7 @@ public class PowerGradient
     public bool randomizeColour;
 
     [SerializeField]
-    List<ColorKey> keys = new List<ColorKey>();
+    List<ColourKey> keys = new List<ColourKey>();
 
     public PowerGradient()
     {
@@ -79,8 +79,8 @@ public class PowerGradient
         if (keys.Count < 2)
             return Color.white;
 
-        ColorKey keyLeft = keys[0];
-        ColorKey keyRight = keys[keys.Count - 1];
+        ColourKey keyLeft = keys[0];
+        ColourKey keyRight = keys[keys.Count - 1];
 
         for (int i = 0; i < keys.Count; i++)
         {
@@ -105,7 +105,7 @@ public class PowerGradient
 
     public int AddKey(Color color, float time)
     {
-        ColorKey newKey = new ColorKey(color, time);
+        ColourKey newKey = new ColourKey(color, time);
         for (int i = 0; i < keys.Count; i++)
         {
             if (newKey.Time < keys[i].Time)
@@ -159,7 +159,7 @@ public class PowerGradient
         }
     }
 
-    public ColorKey GetKey(int i)
+    public ColourKey GetKey(int i)
     {
         return keys[i];
     }
@@ -178,17 +178,17 @@ public class PowerGradient
     }
 
     [System.Serializable]
-    public struct ColorKey
+    public struct ColourKey
     {
         [SerializeField]
-        [ColorUsage(true, false)]
-        Color color;
+        [ColorUsage(false, false)]
+        Color colour;
         [SerializeField]
         float time;
 
-        public ColorKey(Color color, float time)
+        public ColourKey(Color color, float time)
         {
-            this.color = color;
+            this.colour = color;
             this.time = time;
         }
 
@@ -196,7 +196,7 @@ public class PowerGradient
         {
             get
             {
-                return color;
+                return colour;
             }
         }
 
