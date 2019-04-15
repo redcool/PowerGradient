@@ -181,7 +181,7 @@ public class PowerGradient
     public struct ColourKey
     {
         [SerializeField]
-        [ColorUsage(false, false)]
+        [ColorUsage(true, false)]
         Color colour;
         [SerializeField]
         float time;
