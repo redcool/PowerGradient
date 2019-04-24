@@ -21,11 +21,21 @@ public class PowerGradientWindow : EditorWindow
 
     Rect keyInteractiveRect;
 
+    private void OnLostFocus()
+    {
+        Close();
+    }
+
     private void OnGUI()
     {
+        var e = Event.current;
+
         property.serializedObject.Update();
+
         Draw();
-        HandleInput();
+
+        HandleInput(e);
+
         property.serializedObject.ApplyModifiedProperties();
 
         if (needsRepaint)
@@ -36,6 +46,8 @@ public class PowerGradientWindow : EditorWindow
             Repaint();
         }
     }
+
+
 
     void Draw()
     {
@@ -139,9 +151,8 @@ public class PowerGradientWindow : EditorWindow
     }
 
 
-    void HandleInput()
+    void HandleInput(Event guiEvent)
     {
-        Event guiEvent = Event.current;
         HandleMouse(guiEvent);
         HandleKeyboard(guiEvent);
     }
